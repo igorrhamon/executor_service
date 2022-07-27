@@ -1,13 +1,14 @@
 package com.lets_code.executor_service;
 
-import java.time.LocalDateTime;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * Hello world!
@@ -15,23 +16,34 @@ import java.util.concurrent.TimeUnit;
  */
 public class App 
 {
-    public static void main( String[] args ) throws InterruptedException, ExecutionException
+    public static void main( String[] args ) throws InterruptedException, ExecutionException, IOException
     {
         
         ExecutorService executorService = Executors.newCachedThreadPool();
 
-        Future<String> postgreResult = executorService.submit(new Postgresql());
-        Future<String> mySqlResult = executorService.submit(new MySQL());
+        
 
-        List<Future<String>> futures = executorService.invokeAll(List.of(new Postgresql(), new MySQL()));
+        List<Future<String>> results = executorService.invokeAll(
+            List.of(
+                new Postgresql(), 
+                new MySQL(),
+                new CSV(),
+                new MongoDB()
+            )
+        );
         executorService.shutdown();
-
-        futures.stream().forEach(future -> {
+        Files.write(Path.of("result.csv"), results.stream().map(f -> {
             try {
-                System.out.println(future.get());
-            } catch (InterruptedException | ExecutionException e) {
+                return f.get();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (ExecutionException e) {
                 e.printStackTrace();
             }
-        });
+            return null;
+        }).map(s -> s + "\n").collect(Collectors.toList()));
+        System.out.println("Done");
+
+
     }
 }
